@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quiz Habi - Repaso de Políticas</title>
+    <!-- Carga de Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Estilos personalizados para el modo oscuro elegante */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a; /* Slate 900 */
+        }
+        .card {
+            background-color: #1e293b; /* Slate 800 */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            opacity: 0; /* Inicialmente oculto para la animación de inicio */
+            animation: fadeIn 1s ease-out forwards 0.3s; /* Animación de entrada */
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.4);
+        }
+        .option-btn {
+            background-color: #334155; /* Slate 700 */
+            border: 1px solid #475569; /* Slate 600 */
+            transition: all 0.2s ease;
+            text-align: left;
+            white-space: normal;
+        }
+        .option-btn:hover:not(.disabled) {
+            background-color: #475569; /* Slate 600 */
+            transform: scale(1.01);
+        }
+        .option-btn.correct {
+            background-color: #10b981; /* Esmeralda 500 */
+            border-color: #059669;
+            color: white;
+            animation: pulse-green 1s ease-in-out;
+        }
+        .option-btn.incorrect {
+            background-color: #ef4444; /* Rojo 500 */
+            border-color: #dc2626;
+            color: white;
+            animation: shake 0.5s;
+        }
+        .progress-bar-fill {
+            transition: width 0.4s ease-in-out;
+        }
+        
+        /* Animaciones */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-5px); }
+            40%, 80% { transform: translateX(5px); }
+        }
+
+        /* Agregando animaciones de Tailwind CSS, si están disponibles, para el feedback final */
+        .animate-bounce {
+            animation: bounce 1s infinite;
+        }
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(-10%); animation-timing-function: cubic-bezier(0.8, 0, 1, 1); }
+            50% { transform: translateY(0); animation-timing-function: cubic-bezier(0, 0, 0.2, 1); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .5; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div id="quiz-container" class="w-full max-w-2xl">
+        
+        <!-- Contenedor Principal del Quiz -->
+        <div id="quiz-card" class="card rounded-xl p-6 md:p-10 text-white transition duration-500 ease-in-out">
+            <h1 class="text-3xl font-bold mb-2 text-center text-emerald-400">Repaso de Políticas Habi</h1>
+            <!-- Título de Colaboración - Color cambiado a text-yellow-400 para mejor contraste -->
+            <p class="text-xs text-center mb-6 text-yellow-400 italic">Creado por José Jimy G. en colaboración con la suite de Google y el poder de Gemini.</p>
+
+            <!-- Barra de Progreso -->
+            <div class="mb-8">
+                <div class="flex justify-between text-sm mb-1 text-slate-400">
+                    <span id="current-question-count">Pregunta 1</span>
+                    <span id="score-count">Aciertos: 0</span>
+                </div>
+                <div class="w-full bg-slate-700 rounded-full h-2.5">
+                    <div id="progress-bar" class="progress-bar-fill bg-emerald-500 h-2.5 rounded-full" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Sección de Pregunta y Opciones -->
+            <div id="question-section">
+                <h2 id="question-text" class="text-xl font-semibold mb-6">Cargando pregunta...</h2>
+                <div id="options-container" class="space-y-4">
+                    <!-- Opciones se insertarán aquí por JS -->
+                </div>
+                
+                <!-- Botón de Siguiente (Oculto inicialmente) -->
+                <button id="next-btn" class="hidden w-full mt-6 py-3 px-4 bg-teal-600 hover:bg-teal-700 rounded-lg font-bold transition duration-200" onclick="nextQuestion()">
+                    Siguiente Pregunta
+                </button>
+            </div>
+
+            <!-- Sección de Resultados (Oculta inicialmente) -->
+            <div id="results-section" class="hidden text-center">
+                <h2 class="text-3xl font-bold text-emerald-400 mb-4">¡Repaso Completado!</h2>
+                
+                <!-- Contenedor para el feedback final animado (NUEVO) -->
+                <div id="final-feedback-container" class="mb-6 p-4 rounded-xl">
+                    <!-- Contenido dinámico (animado) se insertará aquí -->
+                </div>
+                
+                <p id="final-score" class="text-5xl font-extrabold mb-6"></p>
+
+                <!-- Gráfico de Resultados (Barra) -->
+                <div class="mb-8 p-5 rounded-lg bg-slate-700">
+                    <h3 class="text-xl font-semibold mb-3 border-b border-slate-600 pb-2 text-emerald-300">Estadísticas por Área</h3>
+                    <div id="stats-chart" class="text-left space-y-3">
+                        <!-- Las estadísticas se insertarán aquí -->
+                    </div>
+                </div>
+
+                <!-- Resumen y Mejoras -->
+                <div class="text-left bg-slate-700 p-5 rounded-lg mb-6">
+                    <h3 class="text-xl font-semibold mb-3 text-red-300 border-b border-slate-600 pb-2">Áreas de Oportunidad</h3>
+                    <ul id="improvement-feedback" class="list-disc list-inside space-y-2 text-slate-200">
+                        <!-- Feedback de mejora se insertará aquí -->
+                    </ul>
+                </div>
+
+                <!-- Revisión de Errores -->
+                <div class="text-left bg-slate-700 p-5 rounded-lg mb-6">
+                    <h3 class="text-xl font-semibold mb-4 text-yellow-300 border-b border-slate-600 pb-2">Tus Respuestas vs. Correctas</h3>
+                    <div id="detailed-review" class="space-y-6">
+                        <!-- Detalles de las preguntas fallidas se insertarán aquí -->
+                    </div>
+                </div>
+                
+                <!-- Botón de Reiniciar -->
+                <button class="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 rounded-lg font-bold transition duration-200" onclick="startQuiz()">
+                    Reiniciar Quiz
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        // 1. Data del Quiz (Preguntas, respuestas correctas e incorrectas)
+        const quizData = [
+            {
+                category: "Compra",
+                question: "¿Cuál es el valor de la Tarifa de Derechos de Compra (DdC) y a qué se destina este cargo?",
+                correct: "El valor es del 1% + IVA del precio del inmueble, destinado a cubrir costos operativos, tecnológicos y administrativos.",
+                options: [
+                    "El valor es del 2% + IVA del precio del inmueble, destinado a reserva legal.",
+                    "El valor es del 1% del precio (sin IVA), destinado a gastos de notaría.",
+                    "El valor es del 0.5% + IVA del precio del inmueble, destinado a publicidad y marketing."
+                ],
+                selectedAnswer: null, // Campo para rastrear la respuesta del usuario
+                isCorrect: false
+            },
+            {
+                category: "Compra",
+                question: "Según el cronograma, ¿cuánto tiempo tiene el cliente para pagar la separación después de firmar la Carta de Intención (CI) y qué sucede si no realiza dicho pago?",
+                correct: "El cliente tiene 4 días para pagar la separación. En caso de no hacerlo, el negocio se desiste automáticamente.",
+                options: [
+                    "El cliente tiene 10 días para pagar la separación, y si no lo hace se le cobra una multa.",
+                    "El cliente tiene 2 días para pagar, con una posible extensión de 24 horas con penalización.",
+                    "El cliente tiene 7 días para pagar, tras lo cual se renegocia la Carta de Intención."
+                ],
+                selectedAnswer: null,
+                isCorrect: false
+            },
+            {
+                category: "Compra",
+                question: "¿Cuál es el tiempo estimado de duración del proceso (firma de promesa a escrituras) si el negocio es con crédito, y si es de contado?",
+                correct: "Con crédito: ≈ 1 mes después de la promesa. De contado: ≈ 15 días después de la promesa.",
+                options: [
+                    "Con crédito: ≈ 15 días. De contado: ≈ 1 mes.",
+                    "En ambos casos, el proceso dura ≈ 2 meses.",
+                    "En ambos casos, el proceso dura ≈ 30 días."
+                ],
+                selectedAnswer: null,
+                isCorrect: false
+            },
+            {
+                category: "Créditos",
+                question: "¿Qué requisitos de antigüedad laboral deben cumplir los clientes catalogados como empleados (contrato fijo e indefinido)?",
+                correct: "Contrato indefinido: Más de 6 meses de antigüedad. Contrato fijo: Más de 1 año de antigüedad.",
+                options: [
+                    "Contrato indefinido: Más de 1 año de antigüedad. Contrato fijo: Más de 6 meses de antigüedad.",
+                    "Ambos tipos de contrato requieren más de 3 meses de antigüedad.",
+                    "Ambos tipos de contrato requieren más de 2 años de antigüedad."
+                ],
+                selectedAnswer: null,
+                isCorrect: false
+            },
+            {
+                category: "Créditos",
+                question: "¿Bajo qué condiciones un cliente debe ser referido a Habicredit antes de subir la oferta de compra?",
+                correct: "Todo cliente que tenga crédito preaprobado con bancos o no tenga crédito, si se tiene una oferta de compra.",
+                options: [
+                    "Solo clientes que no tienen crédito preaprobado.",
+                    "Solo clientes que pagan con subsidio.",
+                    "Solo clientes que pagan de contado."
+                ],
+                selectedAnswer: null,
+                isCorrect: false
+            },
+            {
+                category: "Créditos",
+                question: "¿Qué formas de pago NO aplican para ser referidas a Habicredit (excepciones)?",
+                correct: "FNA, contado, Subsidio y Cesantías Caja Honor, y créditos convencionados.",
+                options: [
+                    "Crédito preaprobado con bancos.",
+                    "Crédito sin preaprobación.",
+                    "Crédito para vivienda nueva."
+                ],
+                selectedAnswer: null,
+                isCorrect: false
+            },
+            {
+                category: "Créditos",
+                question: "Si hay un desajuste en el valor del crédito, ¿qué porcentaje asumirá Habi para cubrirlo bajo el beneficio HabiCredit?",
+                correct: "Habi asumirá hasta un 1% del valor del crédito estipulado en la CI.",
+                options: [
+                    "Habi asumirá hasta un 3% del valor total de la PCV.",
+                    "Habi asumirá hasta el 0.5% del valor del inmueble.",
+                    "Habi asumirá el 100% de la diferencia."
+                ],
+                selectedAnswer: null,
+                isCorrect: false
+            },
+            {
+                category: "Clientes",
+                question: "¿Cuáles son los cuatro objetivos principales de la actividad de perfilación del cliente en Habi?",
+                correct: "Entender al cliente, Detectar problemas reales, Conectar emocionalmente, Aumentar la posibilidad de cierre.",
+                options: [
+                    "Incrementar la base de datos, Generar reportes de CRM, Analizar la competencia, Reducir el tiempo de visita.",
+                    "Determinar el valor máximo, Establecer la antigüedad laboral, Negociar el precio, Firmar la PCV.",
+                    "Revisar el Certificado de Tradición, Contactar al banco, Solicitar la CI, Revisar el correo de autorización."
+                ],
+                selectedAnswer: null,
+                isCorrect: false
+            },
+            {
+                category: "Clientes",
+                question: "¿Qué documentos debe el broker verificar (en el portal) y llevar impresos para la visita a inmuebles?",
+                correct: "Verificar el correo de autorización (Habi) o confirmación (Captados), y llevar impreso el formato de carta oferta.",
+                options: [
+                    "Verificar el recibo de servicios públicos y llevar impreso el Certificado de Tradición.",
+                    "Verificar el avalúo del inmueble y llevar impreso el plan de pagos.",
+                    "Verificar el RUT y llevar impreso el contrato de arras."
+                ],
+                selectedAnswer: null,
+                isCorrect: false
+            },
+            {
+                category: "Clientes",
+                question: "¿En qué caso se otorga una compensación al broker (50% DdC) y cuál es el límite?",
+                correct: "Si el negocio desiste después del pago de DdC y antes de la PCV. Límite: 1 desistimiento al mes y máx. 3 al año.",
+                options: [
+                    "Si el negocio desiste antes del pago de DdC. Límite: 2 desistimientos al mes y máx. 5 al año.",
+                    "Si el broker renuncia. Límite: 1 vez.",
+                    "Si el cliente no paga la separación. Sin límite de compensación."
+                ],
+                selectedAnswer: null,
+                isCorrect: false
+            },
+            {
+                category: "Inventario",
+                question: "¿Cuáles son los tres tipos de inventario de inmuebles y qué formas de pago son excluidas para Inmuebles Habi Renta4?",
+                correct: "Tipos: Habi Renta4, Habi Alianza, e Inmuebles Captados. Excluidas para Renta4: Subsidios ni Crédito Hipotecario Caja Honor.",
+                options: [
+                    "Tipos: Nuevo, Usado, Remodelado. Excluidas para Renta4: Contado.",
+                    "Tipos: Directo, Indirecto, Mixto. Excluidas para Renta4: Crédito bancario.",
+                    "Tipos: Residencial, Comercial, Industrial. Excluidas para Renta4: Cesantías."
+                ],
+                selectedAnswer: null,
+                isCorrect: false
+            },
+            {
+                category: "Inventario",
+                question: "¿Cuál es la regla de ofertas para Inmuebles Habi cuando la oferta se presenta por debajo del precio de publicación (con crédito o caja honor)?",
+                correct: "Entra en un contador de 24 horas, ganando la oferta con mejor rentabilidad.",
+                options: [
+                    "La oferta es rechazada automáticamente.",
+                    "Se negocia el precio con el dueño.",
+                    "Se acepta la primera oferta que llegue, independientemente de la rentabilidad."
+                ],
+                selectedAnswer: null,
+                isCorrect: false
+            },
+        ];
+
+        // 2. Variables de Estado
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let answered = false;
+        let incorrectAnswersByCategory = {};
+        const totalQuestions = quizData.length;
+
+        // 3. Funciones de Utilidad
+        // Mezcla un array (Algoritmo Fisher-Yates)
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // Renderiza la pregunta actual
+        function renderQuestion() {
+            if (currentQuestionIndex >= totalQuestions) {
+                showResults();
+                return;
+            }
+
+            const qData = quizData[currentQuestionIndex];
+            const optionsContainer = document.getElementById('options-container');
+            
+            // Reiniciar estado
+            answered = false;
+            optionsContainer.innerHTML = '';
+            document.getElementById('question-text').textContent = qData.question;
+            document.getElementById('next-btn').classList.add('hidden');
+            
+            // Actualizar contador y barra de progreso
+            document.getElementById('current-question-count').textContent = `Pregunta ${currentQuestionIndex + 1} de ${totalQuestions}`;
+            document.getElementById('score-count').textContent = `Aciertos: ${score}`;
+            const progress = (currentQuestionIndex / totalQuestions) * 100;
+            document.getElementById('progress-bar').style.width = `${progress}%`;
+
+
+            // Combinar respuesta correcta con incorrectas y mezclar
+            const allOptions = [qData.correct, ...qData.options];
+            shuffleArray(allOptions);
+
+            allOptions.forEach(optionText => {
+                const button = document.createElement('button');
+                button.textContent = optionText.replace(/\\/g, ''); // Limpieza de backslashes para visualización
+                button.className = 'option-btn w-full py-3 px-4 rounded-lg text-white font-medium text-sm transition duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50';
+                button.setAttribute('data-answer', optionText);
+                button.onclick = () => checkAnswer(button, optionText, qData);
+                optionsContainer.appendChild(button);
+            });
+        }
+
+        // Verifica la respuesta seleccionada
+        function checkAnswer(selectedButton, selectedText, qData) {
+            if (answered) return;
+            answered = true;
+            
+            qData.selectedAnswer = selectedText; // Guardar la respuesta del usuario
+            const category = qData.category;
+            const correctText = qData.correct;
+
+
+            const allButtons = document.getElementById('options-container').querySelectorAll('button');
+            allButtons.forEach(btn => btn.classList.add('disabled')); // Desactivar todos
+
+            if (selectedText === correctText) {
+                score++;
+                qData.isCorrect = true; // Marcar como correcta
+                selectedButton.classList.remove('bg-slate-700');
+                selectedButton.classList.add('correct');
+            } else {
+                // Registrar error por categoría
+                incorrectAnswersByCategory[category] = (incorrectAnswersByCategory[category] || 0) + 1;
+                qData.isCorrect = false; // Marcar como incorrecta
+                
+                selectedButton.classList.remove('bg-slate-700');
+                selectedButton.classList.add('incorrect');
+
+                // Resaltar la respuesta correcta
+                allButtons.forEach(btn => {
+                    if (btn.getAttribute('data-answer') === correctText) {
+                        btn.classList.add('correct');
+                    }
+                });
+            }
+
+            document.getElementById('next-btn').textContent = (currentQuestionIndex === totalQuestions - 1) ? "Ver Resultados" : "Siguiente Pregunta";
+            document.getElementById('next-btn').classList.remove('hidden');
+            document.getElementById('score-count').textContent = `Aciertos: ${score}`;
+        }
+
+        // Pasa a la siguiente pregunta
+        function nextQuestion() {
+            currentQuestionIndex++;
+            renderQuestion();
+        }
+
+        // Renderiza el mensaje final animado basado en la puntuación (NUEVA FUNCIÓN)
+        function renderFinalFeedback(percentage) {
+            const container = document.getElementById('final-feedback-container');
+            let emoji = '';
+            let message = '';
+            let colorClass = '';
+            let animationClass = '';
+
+            if (percentage >= 80) {
+                emoji = '🏆';
+                message = '¡Excelente trabajo! Dominas las políticas de Habi. ¡Sigue así!';
+                colorClass = 'bg-emerald-600/20 text-emerald-300';
+                animationClass = 'animate-bounce';
+            } else if (percentage >= 50) {
+                emoji = '👍';
+                message = 'Buen desempeño. Tienes una base sólida, pero hay espacio para reforzar algunos temas clave.';
+                colorClass = 'bg-yellow-600/20 text-yellow-300';
+                animationClass = 'animate-pulse';
+            } else {
+                emoji = '📚';
+                message = 'Hay áreas importantes por repasar. ¡Ánimo! El conocimiento está a tu alcance.';
+                colorClass = 'bg-red-600/20 text-red-300';
+                animationClass = 'animate-none'; 
+            }
+
+            container.className = `mb-6 p-4 rounded-xl ${colorClass}`;
+            container.innerHTML = `
+                <div class="flex items-center justify-center space-x-3">
+                    <span class="text-4xl ${animationClass} transition duration-500">${emoji}</span>
+                    <p class="text-lg font-medium">${message}</p>
+                </div>
+            `;
+        }
+
+
+        // Muestra la pantalla de resultados
+        function showResults() {
+            document.getElementById('question-section').classList.add('hidden');
+            document.getElementById('results-section').classList.remove('hidden');
+            
+            // Barra de progreso final
+            document.getElementById('progress-bar').style.width = '100%';
+            document.getElementById('current-question-count').textContent = `¡Finalizado!`;
+
+            const percentage = Math.round((score / totalQuestions) * 100);
+            document.getElementById('final-score').innerHTML = `Puntuación: ${score} / ${totalQuestions} <br><span class="text-2xl text-slate-300">(${percentage}%)</span>`;
+            
+            // Llamada a la nueva función de feedback animado
+            renderFinalFeedback(percentage); 
+            renderStatsChart();
+            renderImprovementFeedback();
+            renderDetailedReview();
+        }
+
+        // Renderiza el gráfico de estadísticas (Barras simples con Tailwind)
+        function renderStatsChart() {
+            const chartContainer = document.getElementById('stats-chart');
+            chartContainer.innerHTML = '';
+            
+            // Agrupar preguntas por categoría y calcular el total por categoría
+            const totalQuestionsByCategory = quizData.reduce((acc, q) => {
+                acc[q.category] = (acc[q.category] || 0) + 1;
+                return acc;
+            }, {});
+
+            const categories = Object.keys(totalQuestionsByCategory);
+
+            categories.forEach(category => {
+                const total = totalQuestionsByCategory[category];
+                const incorrect = incorrectAnswersByCategory[category] || 0;
+                const correct = total - incorrect;
+                const percent = Math.round((correct / total) * 100);
+                // Usamos una clase de animación simple en la barra para un toque interactivo
+                const color = percent >= 80 ? 'bg-emerald-500' : (percent >= 50 ? 'bg-yellow-500' : 'bg-red-500');
+
+                const statBar = `
+                    <div>
+                        <div class="flex justify-between mb-1 text-sm">
+                            <span class="font-medium">${category}</span>
+                            <span class="font-bold text-sm ${color.replace('bg-', 'text-')}">${correct} / ${total} (${percent}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-600 rounded-full h-3 overflow-hidden">
+                            <div class="${color} h-3 rounded-full transition-all duration-700 ease-out" style="width: ${percent}%"></div>
+                        </div>
+                    </div>
+                `;
+                chartContainer.innerHTML += statBar;
+            });
+        }
+
+        // Genera el feedback de mejora
+        function renderImprovementFeedback() {
+            const feedbackList = document.getElementById('improvement-feedback');
+            feedbackList.innerHTML = '';
+
+            const categoriesWithErrors = Object.keys(incorrectAnswersByCategory).sort((a, b) => incorrectAnswersByCategory[b] - incorrectAnswersByCategory[a]);
+
+            if (categoriesWithErrors.length === 0) {
+                feedbackList.innerHTML = '<li class="text-emerald-300">¡Felicidades! Tuviste un rendimiento perfecto. Sigue así.</li>';
+                return;
+            }
+
+            // Top 3 categorías con más errores
+            categoriesWithErrors.slice(0, 3).forEach(category => {
+                const numErrors = incorrectAnswersByCategory[category];
+                let suggestion = '';
+
+                switch (category) {
+                    case 'Compra':
+                        suggestion = `Revisa los plazos y los costos asociados al proceso de compra (Tarifa DdC, separación y tiempos de escrituración).`;
+                        break;
+                    case 'Créditos':
+                        suggestion = `Profundiza en la perfilación bancaria, los requisitos de antigüedad laboral y las reglas de referenciación a HabiCredit.`;
+                        break;
+                    case 'Clientes':
+                        suggestion = `Revisa los objetivos de la perfilación, los documentos necesarios para las visitas y las políticas de compensación por desistimiento.`;
+                        break;
+                    case 'Inventario':
+                        suggestion = `Repasa los tipos de inventario y las reglas específicas para la gestión y aprobación de ofertas.`;
+                        break;
+                    default:
+                        suggestion = `Revisa los temas relacionados con ${category}.`;
+                        break;
+                }
+                feedbackList.innerHTML += `<li><span class="font-bold text-red-300">${category} (${numErrors} error${numErrors > 1 ? 'es' : ''}):</span> ${suggestion}</li>`;
+            });
+        }
+
+        // Muestra el detalle de preguntas fallidas
+        function renderDetailedReview() {
+            const reviewContainer = document.getElementById('detailed-review');
+            reviewContainer.innerHTML = '';
+
+            quizData.forEach((q, index) => {
+                if (!q.isCorrect) {
+                    const yourAnswer = q.selectedAnswer || 'No respondida';
+                    const detail = `
+                        <div class="p-4 border border-red-500/30 rounded-lg bg-slate-800 shadow-lg">
+                            <p class="text-sm text-slate-400 mb-1">Categoría: <span class="font-medium text-yellow-400">${q.category}</span></p>
+                            <p class="font-semibold text-white mb-3">P${index + 1}: ${q.question}</p>
+                            
+                            <!-- Respuesta Correcta -->
+                            <div class="bg-emerald-800/50 p-3 rounded-lg mb-2">
+                                <span class="font-bold text-emerald-300 block">✔️ Correcta:</span>
+                                <span class="text-sm text-emerald-100">${q.correct.replace(/\\/g, '')}</span>
+                            </div>
+
+                            <!-- Respuesta del Usuario -->
+                            <div class="bg-red-800/50 p-3 rounded-lg">
+                                <span class="font-bold text-red-300 block">❌ Tu Respuesta:</span>
+                                <span class="text-sm text-red-100">${yourAnswer.replace(/\\/g, '')}</span>
+                            </div>
+                        </div>
+                    `;
+                    reviewContainer.innerHTML += detail;
+                }
+            });
+
+            if (reviewContainer.innerHTML === '') {
+                 reviewContainer.innerHTML = '<p class="text-center text-emerald-300">¡Todas las preguntas fueron respondidas correctamente! No hay errores que repasar.</p>';
+            }
+        }
+
+
+        // 4. Inicialización
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            incorrectAnswersByCategory = {};
+            
+            // Resetear estado de las preguntas
+            quizData.forEach(q => {
+                q.selectedAnswer = null;
+                q.isCorrect = false;
+            });
+            
+            // Mezclar preguntas para variedad
+            shuffleArray(quizData); 
+            
+            document.getElementById('question-section').classList.remove('hidden');
+            document.getElementById('results-section').classList.add('hidden');
+            document.getElementById('quiz-card').scrollIntoView({ behavior: 'smooth' });
+
+            renderQuestion();
+        }
+
+        // Iniciar el quiz al cargar la página
+        window.onload = startQuiz;
+
+    </script>
+</body>
+</html>
